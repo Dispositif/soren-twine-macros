@@ -5,8 +5,9 @@
 ![SugarCube](images/sugarcube.png "SugarCube") A few tips or JS that may be useful to others.
 
 - [Preload image](#preload-image)
-- [imageRight macro](#imageright-macro)
-- [injectBodyImage](#injectbodyimage)
+- [Images outside #passage](#images-outside-passage-container)
+  - [imageRight macro](#imageright-macro)
+  - [injectBodyImage](#injectbodyimage)
 - [Pseudo-random pickFromArray()](#pseudo-random-pickfromarray)
 - [decrypt](#decrypt)
 - [Remove SugarCube UI](#remove-sugarcube-ui)
@@ -22,7 +23,7 @@ Download images in browser cache, to display them immediately on the following p
 
 Browsers are smart. You can write preload for the same image on 50 passages, the image will be downloaded only once. No performance issue. Same with audio caching using SC `<<audiocache>>`.
 
-In "StoryInit" I only `<<preload>>` the images displayed on the Start screen : this minimizes the game's loading time.
+In "StoryInit" I only `<<preload>>` the images displayed on the Start screen : this minimizes the game startup loading time.
 
 ```javascript
 // Preload images inside any passage
@@ -47,13 +48,24 @@ This passage preload two images in browser cache.
 
 -----------
 
+# Images outside #passage container
 
-## imageRight macro
-To get around CSS "[stacking context](https://philipwalton.com/articles/what-no-one-told-you-about-z-index/)" issues, I prefer to display large images (illustration, portrait) in a DIV that is not a child of #passages and .passage containers.
+
+To get around <a href="https://philipwalton.com/articles/what-no-one-told-you-about-z-index/" target="_blank">CSS stacking context issues</a>, I prefer to display large images (illustration, portrait) in a DIV that is not a child of #passages and .passage containers.
 
 It allows to position and resize independently the image, have the image that extends beyond (behind) the .passage box. My .passage can become a text-only box (a small dialog box in a visual novel).
 
-In my visual novel, I created different macros depending on the desired NPC portrait positions (right, left, behind, etc.). One example is given below. It uses a [transparent.png](images/transparent.png) image when not needed (Why I didn't use a `.hidden` class?).
+2 solutions :
+* [`<<imageRight>> macro`](#imageright-macro) using an already existing div.
+* [`<<injectBodyImage>> macro`](#injectbodyimage) if you want more flexibility.
+
+Example : screenshot of my visual novel with a background image, a character portrait on the middle (remains) and a the `.passage` area as a small dialog box filled with text.
+![Screenshot](images/screen-vamp.jpg "Screenshot")
+
+
+## imageRight macro
+
+To get around CSS stacking context issues. In my visual novel, I created different macros depending on the desired NPC portrait positions (right, left, behind, etc.). One example is given below. It uses a [transparent.png](images/transparent.png) image when not needed (Why I didn't use a `.hidden` class?).
 
 An other solution is to use my macro [`<<injectBodyImage>>`](#injectbodyimage). 
 
@@ -118,6 +130,7 @@ CSS example (image on the right side) :
 
 ## injectBodyImage
 
+To get around CSS stacking context issues.
 This macro create a `<div>` containing an `<img>` directly into the `<body>`. This ensures the CSS stacking context is the body, not #passage. The image can extend beyond (or behind) the `.passage` box borders.
 
 A more flexible solution than my [`<<imageRight>> macro`](#imageright-macro). With `<<injectBodyImage>>`, no need to create in advance a DIV in the `StoryInterface` passage.
