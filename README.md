@@ -10,6 +10,7 @@
 - [Pseudo-random pickFromArray()](#pseudo-random-pickfromarray)
 - [decrypt](#decrypt)
 - [Remove SugarCube UI](#remove-sugarcube-ui)
+- [Click sound](#click-sound)
 
 Also see my [Bash script ideas for Linux/Mac](bash/BASH.md).
 
@@ -352,4 +353,28 @@ a.link-external::after {
 }
 
 /* and work on .passage styling !! */
+```
+
+-----------------------
+
+## Click sound
+Play a sound when the player clicks on internal links.
+
+Javascript :
+```javascript
+const clickSound = new Audio("audio/sfx/click.mp3");
+clickSound.volume = 0.4; // adjust as needed
+
+/* Play sound on click of internal links */
+$(document).on('click', '[data-passage].link-internal', function (e) {
+    clickSound.currentTime = 0;
+    clickSound.play().catch(err => {
+        console.warn("Click sound couldn't be played:", err);
+    });
+});
+```
+In `StoryInit` passage :
+```html
+:: StoryInit
+<<cacheaudio "click" "audio/sfx/click.mp3">> /* Keep! JS click sound */
 ```
