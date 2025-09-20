@@ -11,6 +11,8 @@
 - [decrypt](#decrypt)
 - [Remove SugarCube UI](#remove-sugarcube-ui)
 
+Also see my [Bash script ideas for Linux/Mac](bash/BASH.md).
+
 -------------
 
 ## Preload image
@@ -115,7 +117,7 @@ CSS example (image on the right side) :
 
 ## injectBodyImage
 
-This macro create a `<div>` containing an `<img>` directly into the `<body>`. This ensures the CSS [stacking context](https://philipwalton.com/articles/what-no-one-told-you-about-z-index/) is the body, not #passage. The image can extend beyond (or behind) the `.passage` box borders.
+This macro create a `<div>` containing an `<img>` directly into the `<body>`. This ensures the CSS stacking context is the body, not #passage. The image can extend beyond (or behind) the `.passage` box borders.
 
 A more flexible solution than my [`<<imageRight>> macro`](#imageright-macro). With `<<injectBodyImage>>`, no need to create in advance a DIV in the `StoryInterface` passage.
 
