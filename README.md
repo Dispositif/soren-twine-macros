@@ -1,10 +1,12 @@
-# Søren macros for Twine SugarCube v2.37
+# Søren macros for Twine SugarCube v2.37 
 
-A few tips or JS macros that may be useful to others.
 
+
+![SugarCube](images/sugarcube.png "SugarCube") A few tips or JS that may be useful to others.
 
 - [Preload image](#preload-image)
 - [imageRight macro](#imageright-macro)
+- [injectBodyImage](#injectbodyimage)
 - [Pseudo-random pickFromArray()](#pseudo-random-pickfromarray)
 - [decrypt](#decrypt)
 - [Remove SugarCube UI](#remove-sugarcube-ui)
@@ -15,7 +17,7 @@ A few tips or JS macros that may be useful to others.
 
 Download images in browser cache, to display them immediately on the following passages. This ensures that players don't experience delays when heavy images are displayed (on the web).
 
-Browsers are smart. You can write preload for the same image on 50 passages, the image will be downloaded only once. No duplicate download or performance issue.
+Browsers are smart. You can write preload for the same image on 50 passages, the image will be downloaded only once. No performance issue. Same with audio caching using SC `<<audiocache>>`.
 
 In "StoryInit" I only `<<preload>>` the images displayed on the Start screen : this minimizes the game's loading time.
 
@@ -44,11 +46,13 @@ This passage preload two images in browser cache.
 
 
 ## imageRight macro
-To get around CSS "stacking context" issues, I prefer to display large images (illustration, portrait) in a DIV that is not a child of #passages and .passage containers.
+To get around CSS "[stacking context](https://philipwalton.com/articles/what-no-one-told-you-about-z-index/)" issues, I prefer to display large images (illustration, portrait) in a DIV that is not a child of #passages and .passage containers.
 
-It allows also to position and resize independently the image, have the image that extends beyond the .passage box. My .passage can become a text-only box (or a dialog box in a visual novel).
+It allows to position and resize independently the image, have the image that extends beyond (behind) the .passage box. My .passage can become a text-only box (a small dialog box in a visual novel).
 
-I create different macros depending on the desired positions (right, left, behind, etc.). One example is given below.
+In my visual novel, I created different macros depending on the desired NPC portrait positions (right, left, behind, etc.). One example is given below. It uses a [transparent.png](images/transparent.png) image when not needed (Why I didn't use a `.hidden` class?).
+
+An other solution is to use my macro [`<<injectBodyImage>>`](#injectbodyimage). 
 
 HTML in StoryInterface :
 ```html
@@ -106,6 +110,130 @@ CSS example (image on the right side) :
     background: rgba(255, 255, 255, 0.7); /* semi-transparent */
     border: 1px solid red;
 }
+```
+
+
+## injectBodyImage
+
+This macro create a `<div>` containing an `<img>` directly into the `<body>`. This ensures the CSS [stacking context](https://philipwalton.com/articles/what-no-one-told-you-about-z-index/) is the body, not #passage. The image can extend beyond (or behind) the `.passage` box borders.
+
+A more flexible solution than my [`<<imageRight>> macro`](#imageright-macro). With `<<injectBodyImage>>`, no need to create in advance a DIV in the `StoryInterface` passage.
+
+
+```javascript
+/**
+ * <<injectBodyImage "className" "image.png">>
+ *
+ * Injects a <div> containing an <img> directly into the <body>.
+ * This ensures the stacking context is the body, not #passage.
+ * If a div with the same class already exists in <body>, it is removed
+ * before appending the new one (prevents stacking duplicates).
+ *
+ * @param {string} className - CSS class of the new <div>
+ * @param {string} imgSrc - Path of the image
+ * @returns {void}
+ *
+ * Example:
+ *   <<injectBodyImage "portrait" "images/alice.png">>
+ */
+Macro.add('injectBodyImage', {
+    handler: function () {
+        if (this.args.length < 2) {
+            return this.error('Usage: <<injectBodyImage "className" "image.png">>');
+        }
+        const divClass = this.args[0];
+        const imgSrc   = this.args[1];
+
+        setTimeout(() => {
+            $('body').find('.' + divClass).remove();
+            const $newDiv = $('<div>', { class: divClass }).append(
+                $('<img>', { src: imgSrc })
+            );
+    
+            $('body').append($newDiv);
+        }, 0);
+    }
+});
+
+/**
+ * Removes a <div> (and child elements).
+ * @param {string} className - CSS class of the <div> to remove
+ * Example:
+ *   <<removeBodyImage "portrait">>
+ */
+Macro.add('removeBodyImage', {
+    handler: function () {
+        const className = String(this.args[0]).trim();
+        if (!className) {
+            return this.error('Invalid className: empty string.');
+        }
+        setTimeout(() => {
+            $('body').find('.' + className).remove();
+        }, 0);
+    }
+});
+
+
+```
+
+In a passage :
+```html
+:: Test
+<<injectBodyImage "portrait" "images/alice.png">>
+This passage inject a div.portrait containing an image directly into the body.
+[[Test2]]
+
+:: Test2
+This passage does not inject the image again, so the image is still visible.
+[[Test3]]
+
+:: Test3
+<<injectBodyImage "portrait" "images/bob.png">>
+This passage replaces the image with another one.
+[[Test4]]
+
+:: Test4
+<<removeBodyImage "portrait">>
+This passage removes the image, using the removeBodyImage macro.
+```
+
+CSS example :
+```css
+.portrait {
+    position: fixed;
+    z-index: 10;
+    right: 0.5rem;
+    top: 3rem;
+    height: 100%;
+    width: auto;
+}
+.passage {
+    z-index: 20; /* above .portrait */
+    max-width: 50%;
+    background: rgba(255, 255, 255, 0.7); /* semi-transparent */
+    border: 1px solid red;
+}
+```
+
+Tips : For the implementation of a game, I create dedicated widgets for recurring images.
+Example : 
+```html
+:: characterPortrait [widget nobr]
+<<widget "characterPortrait">>
+   <<if ndef _args[0] || _args[0]=''>><<removeBodyImage "portrait">><</if>>
+   <<if _args[0] === "Bob">>
+      <<injectBodyImage "portrait" "images/bob.png">>
+      /* ... other characters... */
+   <</if>>
+<</widget>>
+
+:: Test
+<<characterPortrait "Bob">>
+This passage displays Bob's portrait. [[Go to Test2|Test2]]
+
+:: Test2
+<<characterPortrait>>
+This passage removes the portrait.
 ```
 
 ----------
