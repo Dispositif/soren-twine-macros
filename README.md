@@ -12,6 +12,7 @@
 - [decrypt](#decrypt)
 - [Remove SugarCube UI](#remove-sugarcube-ui)
 - [Click sound](#click-sound)
+- [Debug overlay](#debug-overlay)
 
 Also see my [Bash script ideas for Linux/Mac](bash/BASH.md).
 
@@ -390,4 +391,102 @@ In `StoryInit` passage :
 ```html
 :: StoryInit
 <<cacheaudio "click" "audio/sfx/click.mp3">> /* Keep! JS click sound */
+```
+
+-----------------
+
+
+## Debug overlay
+
+To display a small overlay with passage name, tags, variables, etc. 
+The overlay can be toggled by clicking a button in the top right corner.
+
+![debug overlay](images/debug-overlay.jpg "debug overlay")
+
+
+```javascript
+setup.debugOverlay = true; // change that to true to enable the debug overlay
+Config.enableOptionalDebugging = true;
+
+// Add a debug overlay to the page with information about the current passage
+// and temporary/global variables.
+$(document).on(':passagerender', function (ev) {
+    if (!setup.debugOverlay) return;
+
+    let $toggle = $('#debug-toggle');
+    let $overlay = $('#debug-overlay');
+
+    if ($toggle.length === 0) {
+        $toggle = $('<div>', {
+            id: 'debug-toggle',
+            title: 'Debug',
+            html: '🔧'
+        }).appendTo('body');
+
+        $overlay = $('<div>', { id: 'debug-overlay' }).appendTo('body');
+        $toggle.on('click', function () { $overlay.toggle(); });
+        $overlay.on('click', function () { $overlay.hide(); });
+    }
+
+    const title = ev.passage.title;
+    const tags = ev.passage.tags;
+    const tempVars = SugarCube.State.temporary;
+    const globalVars = SugarCube.State.variables;
+
+    const internals = Object.keys(tempVars)
+        .map(k => `${k}: ${JSON.stringify(tempVars[k])}`)
+        .join('\n') || '(none)';
+
+    const globals = Object.keys(globalVars)
+        .map(k => `${k}: ${JSON.stringify(globalVars[k])}`)
+        .join('\n') || '(none)';
+
+    $overlay.html(
+        `:: <b>${title}</b> [${tags.join(' ')}]\n\n` +
+        `🔹 Internal vars _\n${internals}\n\n` +
+        `🔸 Global vars $\n${globals}`
+    );
+});
+```
+
+CSS :
+```css
+#debug-overlay {
+    display: none;
+    position: fixed;
+    top: 0.5rem;
+    right: 0.5rem;
+    background: rgba(0, 0, 0, 0.6);
+    color: #0f0;
+    font-family: monospace;
+    font-size: 0.8rem;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    white-space: pre;
+    z-index: 9999;
+    /*pointer-events: none;*/
+    max-width: 400px;
+    max-height: 90vh;
+    overflow: auto;
+    overflow-x: scroll;
+}
+
+#debug-toggle {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    font-size: 20px;
+    cursor: pointer;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    padding: 5px 8px;
+    border-radius: 5px;
+    z-index: 9999;
+    opacity: 0.4;
+    transition: opacity 0.3s;
+}
+
+#debug-toggle:hover {
+    opacity: 1;
+}
 ```
