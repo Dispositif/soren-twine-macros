@@ -4,6 +4,7 @@
 
 Passage display :
 - [LookLink](#looklink)
+- [Metadata macro](#metadata-macro)
 - [Decrypt](#decrypt)
 - [Click sound](#click-sound)
 
@@ -30,7 +31,7 @@ In the target passage, add a `<<describe>>…<</describe>>` block at the top to 
 
 In another passage, write <<lookLink "PassageName">> (or add a custom label as the second argument).
 
-This mimics the MUSH-style "look [room]" command and OOP @describe property. Descriptions are authored once in their own passages, ensuring consistency across the game with lots of locations, objects, and NPCs.
+This mimics the MUSH-style "look [room]" command @describe property. Descriptions are authored once in their own passages, ensuring consistency across the game with lots of locations, objects, and NPCs.
 
 Example:
 ```html
@@ -125,7 +126,131 @@ Macro.add("describe", {
 });
 ```
 
+---------------------
 
+## Metadata macro
+
+This macro lets you store per-passage properties in a silent container and read them anywhere without rendering the passage. 
+
+```html
+<<meta>>{
+  "closeAtNight": true,
+  "owner": "Mme Bouchard",
+}<</meta>> \
+```
+
+Write strict JSON inside `<<meta>>…<</meta>>` (alias `<<metadata>>`), then access it with `setup.getMeta("Passage")`, fetch a key via `setup.meta("Passage","key")` or use `<<metaVal "Passage" "key" "default">>`. 
+
+This keeps gameplay flags and attributes co-located with their rooms, objects, or NPCs, and cached for performance. Ideal for an OOP-style project structure. Metadata  are read without rendering the target passage (no side effects with the passage code).
+
+Example :
+```html
+:: metadata
+Using metadata from [[House]] passage:
+<<if setup.meta("House", "closeAtNight")>> \
+    The house is closed at night.
+<</if>> \
+House's owner: <<metaVal "House" "owner" "unknown">>
+
+[[back|previous()]]
+
+:: House
+<<meta>>
+{
+  "closeAtNight": true,
+  "owner": "Miss Bouchard",
+  "lock": 14
+}
+<</meta>> \
+The interior of the house...
+Meta is not displayed here.
+Temporary {{{_lock}}} value : <<= _lock>> /* "14" */
+
+[[back|previous()]]
+```
+
+**Use cases:**
+* Rooms/places: access rules ("closeAtNight": true), lock key, tags ("indoors", "unsafe"), map coordinates, external description (like my `<<lookLink>>`).
+* NPCs: faction, suspicion level, skills, secrets known…
+* Economy/shops: inventory lists, restock timers, prices…
+
+Troubleshooting : Go to the target passage and check the browser console for JSON parse errors.
+
+Javascript:
+```javascript
+/* ========= Passage Meta System =========
+   Store per-passage metadata as JSON inside <<meta>> ... <</meta>>
+   Read it anywhere without rendering the passage.
+   Also supports <<metadata>> ... <</metadata>> as an alias.
+*/
+
+setup.metaCache = Object.create(null);
+
+// Extract <<meta>>...</meta>> OR <<metadata>>...</metadata>>
+setup.extractMetaBlock = function (passageTitle) {
+    if (!Story.has(passageTitle)) return null;
+    const src = Story.get(passageTitle).text || "";
+    const m = src.match(/<<\s*(meta|metadata)(?:\s[^>]*)?>>([\s\S]*?)<<\s*\/\s*\1\s*>>/i);
+    return m ? m[2].trim() : null;
+};
+
+// Parse and cache metadata object
+setup.getMeta = function (passageTitle) {
+    if (!passageTitle) return {};
+    if (setup.metaCache[passageTitle]) return setup.metaCache[passageTitle];
+
+    const block = setup.extractMetaBlock(passageTitle);
+    if (!block) { setup.metaCache[passageTitle] = {}; return {}; }
+
+    try {
+        const obj = JSON.parse(block); // strict JSON recommended
+        setup.metaCache[passageTitle] = obj && typeof obj === "object" ? obj : {};
+        return setup.metaCache[passageTitle];
+    } catch (e) {
+        console.warn("[meta] JSON parse error in passage:", passageTitle, e);
+        setup.metaCache[passageTitle] = {};
+        return {};
+    }
+};
+
+// Safe getter with default
+setup.meta = function (passageTitle, key, dflt = undefined) {
+    const o = setup.getMeta(passageTitle);
+    return (o && Object.prototype.hasOwnProperty.call(o, key)) ? o[key] : dflt;
+};
+
+// Container macro: <<meta>> ... <</meta>> or <<metadata>> ... <</metadata>>
+// - Suppresses output
+// - Exposes parsed object locally as temporay _key values. E.g. _author, _date, etc.
+Macro.add(["meta", "metadata"], {
+    tags: null,
+    handler() {
+        const raw = (this.payload && this.payload[0]) ? this.payload[0].contents : "";
+        try {
+            const obj = JSON.parse(raw);
+            for (const k of Object.keys(obj)) {
+                SugarCube.State.temporary[k] = obj[k];
+            }
+        } catch {
+            return this.error("Passage <<meta>> contains invalid JSON.");
+        }
+        // no output
+    }
+});
+
+
+// Print helper: <<metaVal "PassageName" "key" ["default value"]>>
+Macro.add("metaVal", {
+    handler() {
+        if (this.args.length < 2) return this.error('Usage: <<metaVal "PassageName" "key" ["default"]>>');
+        const title = String(this.args[0]);
+        const key   = String(this.args[1]);
+        const dflt  = this.args.length > 2 ? this.args[2] : "";
+        const val   = setup.meta(title, key, dflt);
+        new Wikifier(this.output, String(val));
+    }
+});
+```
 
 -----------------------
 
@@ -416,11 +541,17 @@ Example :
 ```html
 :: characterPortrait [widget nobr]
 <<widget "characterPortrait">>
-   <<if ndef _args[0] || _args[0]=''>><<removeBodyImage "portrait">><</if>>
-   <<if _args[0] === "Bob">>
-      <<injectBodyImage "portrait" "images/bob.png">>
+   <<if ndef _args[0]>><<removeBodyImage "portrait">><</if>>
+   <<switch _args[0]>>
+      <<case "Bob">>
+        <<injectBodyImage "portrait" "images/bob.png">>
+      <<case "Alice">>
+        <<injectBodyImage "portrait" "images/alice.png">>
       /* ... other characters... */
-   <</if>>
+      <<default>>
+        <<removeBodyImage "portrait">>
+        <<run console.warn("<<characterPortrait>> unknown character", _args[0])>>
+   <</switch>>
 <</widget>>
 
 :: Test
@@ -611,3 +742,4 @@ CSS :
     opacity: 1;
 }
 ```
+For debugging, I'm using now the nice Chrome extension <a href="https://chromewebstore.google.com/search/twine%20dugger" target="_blank">Twine Dugger</a>.
