@@ -15,6 +15,7 @@ Images :
   - [injectBodyImage](#injectbodyimage)
 
 Other :
+- [Custom return macro](#custom-return-macro)
 - [Pseudo-random pickFromArray()](#pseudo-random-pickfromarray)
 - [Remove SugarCube UI](#remove-sugarcube-ui)
 - [Debug overlay](#debug-overlay)
@@ -566,7 +567,53 @@ This passage removes the portrait.
 
 ----------
 
+# Other useful things
 
+## Custom return macro
+
+Rewrite the default `<<return>>` macro to allow skipping passages tagged with `noreturn`.
+
+When the player visits any passage (not tagged `[noreturn]`), its name is stored in `$return` (AFTER the rendering of the passage). The `<<return>>` macro then creates a link back to that passage.
+
+```javascript
+$(document).on(':passageend', function (ev) {
+    if (!ev.detail.passage.tags.includes('noreturn')) {
+        State.variables.return = ev.detail.passage.name;
+    }
+});
+// Rewrite <<return>> allowing to skip passages tagged [noreturn]
+Macro.delete('return');
+Macro.add(['return'], {
+    handler() {
+        const target = (typeof State.variables.return === 'string') ? State.variables.return : null;
+        const label = '☜ Return';
+
+        if (!target) {
+            new Wikifier(this.output, `[return without target]`);
+            return;
+        }
+
+        new Wikifier(this.output, `[[${label}|${target}]]`);
+    }
+});
+```
+Example : 
+```html
+:: Start
+You are in the starting passage.
+[[Go to A|A]]
+
+:: A [noreturn]
+This is passage A. It is tagged [noreturn].
+[[Go to B|B]] or <<return>>
+
+:: B
+This is passage B. You can return (to Start).
+<<return>>
+```
+
+
+------
 
 ## Pseudo-random pickFromArray()
 Pick deterministic-random element from array, using seed. You obtain the same result each time you use the same seed. 
