@@ -1,6 +1,7 @@
 # Søren's macros for Twine SugarCube v2.37
 
 ![SugarCube](images/sugarcube.png "SugarCube") A few tips or JS that may be useful to others.
+This doc on my Github repo : https://github.com/Dispositif/soren-twine-macros
 
 Passage display :
 - [LookLink](#looklink)
@@ -651,8 +652,16 @@ setup.pickFromArray = function (seed, arr, salt = 0) {
 Use in a passage :
 ```xhtml
 :: Test
-<<set _item = setup.pickFromArray(passage(), ["apple", "banana", "cherry"]) >>
-<<= _item>>
+Test passage:
+<<set _item = setup.pickFromArray(passage(), ["apple", "apricot", "blackberry", "banana", "cherry", "citron", "melon", "orange"]) >>
+<<= _item>> every time you come here.
+[[Test2]]
+
+:: Test2
+Test2 passage:
+<<set _item = setup.pickFromArray(passage(), ["apple", "apricot", "blackberry", "banana", "cherry", "citron", "melon", "orange"]) >>
+<<= _item>> every time you come here.
+[[Test]]
 ```
 
 Note : if you want seed everywhere, you can use the SugarCube [random()](https://www.motoslave.net/sugarcube/2/docs/#functions-function-random) with [State.prng.init()](https://www.motoslave.net/sugarcube/2/docs/#state-api-method-prng-init)
